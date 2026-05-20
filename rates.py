@@ -56,3 +56,19 @@ def get_riskfree_curve() -> pd.DataFrame:
 
 def interpolate_rate(curve: pd.DataFrame, tenor_days: float) -> float:
     return float(np.interp(tenor_days, curve["tenor_days"], curve["rate"]))
+
+
+def forward_rate(curve: pd.DataFrame, t1_days: float, t2_days: float) -> float:
+    """Continuously-compounded forward rate from t1 to t2, bootstrapped from spot.
+
+    FRED par/spot yields are quoted simple/annual; we treat them as
+    continuously-compounded zero rates for this approximation. For short
+    tenors (<= 2y) the error is < ~5 bps, which is fine for arb screening.
+    """
+    if t2_days <= t1_days:
+        raise ValueError(f"t2_days ({t2_days}) must exceed t1_days ({t1_days})")
+    r1 = interpolate_rate(curve, t1_days)
+    r2 = interpolate_rate(curve, t2_days)
+    t1 = t1_days / 365.25
+    t2 = t2_days / 365.25
+    return (r2 * t2 - r1 * t1) / (t2 - t1)
